@@ -1,5 +1,7 @@
 import streamlit as st
 from openai import OpenAI
+from datetime import datetime
+import json
 
 # Initialize the OpenAI client securely
 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
@@ -41,30 +43,44 @@ o	A blinking or red light may indicate an ISP issue.
 ”
 
 
-After you provide the instructions, thank the user and express hope that the answer was helpful.
-You must instruct the user to proceed back to the survey to complete all questions about their experience: https://asu.co1.qualtrics.com/jfe/preview/previewId/62fdf4cc-a69f-4255-a321-4d795485d826/SV_3rutUOKtHWkQaA6?Q_CHL=preview&Q_SurveyVersionID=current
+After you provide the instructions, thank the user and express hope that the answer was helpful
+ Complete the interaction with the phrase below:
+Thank you for reaching out. I hope this information was helpful.
+
+ ***Please proceed back to the survey to complete all questions about your experience:***
+ : https://asu.co1.qualtrics.com/jfe/preview/previewId/62fdf4cc-a69f-4255-a321-4d795485d826/SV_3rutUOKtHWkQaA6?Q_CHL=preview&Q_SurveyVersionID=current
 
 If at any point, user asks questions non-related to the modem troubleshooting, then reply: "I am sorry. I was only trained to handle Internet connectivity issues. Please contact Reihane Boghrati if you have any additional inquires unrelated to the WiFi troubleshooting."
 
 """
 
-# --- Session setup ---
-st.title("Wireless Support Bot")
+# --- Page Config ---
+st.set_page_config(page_title="Wireless Support Bot", page_icon="💬")
+st.title("📶 Wireless Support Bot")
 
+# --- Initialize Session State ---
 if "messages" not in st.session_state:
-    st.session_state.messages = [
-        {"role": "system", "content": SYSTEM_PROMPT}
-    ]
+    st.session_state.messages = [{"role": "system", "content": SYSTEM_PROMPT}]
 
-# --- Display previous messages ---
-for msg in st.session_state.messages[1:]:  # skip system prompt in display
-    st.write(f"**{msg['role'].capitalize()}:** {msg['content']}")
+# --- Style Definitions ---
+USER_STYLE = "background-color:#DCF8C6;padding:8px;border-radius:10px;margin:5px 0;"
+BOT_STYLE = "background-color:#F1F0F0;padding:8px;border-radius:10px;margin:5px 0;"
 
-# --- User input ---
-user_input = st.text_input("You:", key="user_input")
+# --- Chat Display ---
+for msg in st.session_state.messages[1:]:  # skip system prompt
+    role = msg["role"]
+    content = msg["content"]
+
+    if role == "user":
+        st.markdown(f"<div style='{USER_STYLE}'><strong>You:</strong> {content}</div>", unsafe_allow_html=True)
+    elif role == "assistant":
+        st.markdown(f"<div style='{BOT_STYLE}'><strong>Assistant:</strong> {content}</div>", unsafe_allow_html=True)
+
+# --- User Input ---
+user_input = st.text_input("You:", value="", key="user_input")
 
 if user_input:
-    # Add user message to session
+    # Save user input
     st.session_state.messages.append({"role": "user", "content": user_input})
 
     # Get response from OpenAI
@@ -72,7 +88,21 @@ if user_input:
         model="gpt-3.5-turbo",
         messages=st.session_state.messages
     )
-
     reply = response.choices[0].message.content
+
+    # Save assistant response
     st.session_state.messages.append({"role": "assistant", "content": reply})
-    st.write(f"**Assistant:** {reply}")
+
+    # Clear input and refresh
+    st.session_state["user_input"] = ""
+    st.rerun()
+
+# --- Save transcript to JSON (for research use only; local mode only) ---
+conversation_json = json.dumps(st.session_state.messages[1:], indent=2)  # skip system message
+timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+filename = f"chat_transcript_{timestamp}.json"
+output_dir = "transcripts"
+os.makedirs(output_dir, exist_ok=True)
+
+with open(os.path.join(output_dir, filename), "w", encoding="utf-8") as f:
+    f.write(conversation_json)

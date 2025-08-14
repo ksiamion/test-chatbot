@@ -2,7 +2,7 @@ import streamlit as st
 from openai import OpenAI
 from datetime import datetime
 import json
-
+import os
 # Initialize the OpenAI client securely
 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
@@ -56,7 +56,7 @@ If at any point, user asks questions non-related to the modem troubleshooting, t
 
 # --- Page Config ---
 st.set_page_config(page_title="Wireless Support Bot", page_icon="💬")
-st.title("📶 Wireless Support Bot")
+st.title("Wireless Support Bot")
 
 # --- Initialize Session State ---
 if "messages" not in st.session_state:

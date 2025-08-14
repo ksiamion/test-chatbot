@@ -56,18 +56,18 @@ If at any point, user asks questions non-related to the modem troubleshooting, t
 
 # --- Page Config ---
 st.set_page_config(page_title="Wireless Support Bot", page_icon="💬")
-st.title("Wireless Support Bot")
+st.title("📶 Wireless Support Bot")
 
 # --- Initialize Session State ---
 if "messages" not in st.session_state:
     st.session_state.messages = [{"role": "system", "content": SYSTEM_PROMPT}]
 
-# --- Style Definitions ---
+# --- Chat Bubble Styling ---
 USER_STYLE = "background-color:#DCF8C6;padding:8px;border-radius:10px;margin:5px 0;"
 BOT_STYLE = "background-color:#F1F0F0;padding:8px;border-radius:10px;margin:5px 0;"
 
-# --- Chat Display ---
-for msg in st.session_state.messages[1:]:  # skip system prompt
+# --- Display Chat History (excluding system prompt) ---
+for msg in st.session_state.messages[1:]:
     role = msg["role"]
     content = msg["content"]
 
@@ -76,29 +76,30 @@ for msg in st.session_state.messages[1:]:  # skip system prompt
     elif role == "assistant":
         st.markdown(f"<div style='{BOT_STYLE}'><strong>Assistant:</strong> {content}</div>", unsafe_allow_html=True)
 
-# --- User Input ---
-user_input = st.text_input("You:", value="", key="user_input")
+# --- User Input Form (auto-clearing) ---
+with st.form("chat_form", clear_on_submit=True):
+    user_input = st.text_input("You:")
+    submitted = st.form_submit_button("Send")
 
-if user_input:
-    # Save user input
+if submitted and user_input:
+    # Add user message
     st.session_state.messages.append({"role": "user", "content": user_input})
 
-    # Get response from OpenAI
+    # Get assistant response
     response = client.chat.completions.create(
         model="gpt-3.5-turbo",
         messages=st.session_state.messages
     )
     reply = response.choices[0].message.content
 
-    # Save assistant response
+    # Add assistant reply
     st.session_state.messages.append({"role": "assistant", "content": reply})
 
-    # Clear input and refresh
-    st.session_state["user_input"] = ""
+    # Trigger rerun to show updated chat
     st.rerun()
 
-# --- Save transcript to JSON (for research use only; local mode only) ---
-conversation_json = json.dumps(st.session_state.messages[1:], indent=2)  # skip system message
+# --- Save transcript locally (for researcher use only) ---
+conversation_json = json.dumps(st.session_state.messages[1:], indent=2)
 timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 filename = f"chat_transcript_{timestamp}.json"
 output_dir = "transcripts"
